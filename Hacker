@@ -1,0 +1,138 @@
+package brain;
+
+import actor.Bot;
+import actor.BotBrain;
+import grid.Location;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import world.BotWorld;
+/**
+ *
+ * @author edwar
+ */
+public class Hacker extends BotBrain {
+    private static final int HACKED_SELF_MOVE_INIT = -999;
+    private static final int HACKED_SELF_ROUND_INIT = 1;
+    
+    private static final int THRESH = 144; // 12^2 for all the spaces to open
+    
+    private static int HACKED_SELF_MOVE_COUNTER = HACKED_SELF_MOVE_INIT;
+    private static int HACKED_SELF_ROUND_COUNTER = HACKED_SELF_ROUND_INIT;
+    
+    private ArrayList<Location> route = new ArrayList<Location>();
+    private int i = 0;
+    private boolean routeCompleted = false;
+    
+    private final static boolean HACKED_MATCH_READY = true;
+    
+    public void initForRound()
+    {
+        route.add(new Location(13,13));
+        route.add(new Location(13,2));
+        route.add(new Location(2,2));
+        route.add(new Location(2,13));
+        route.add(new Location(12,13));
+        route.add(new Location(12,12));
+        route.add(new Location(12,3));
+        route.add(new Location(3,3));
+        route.add(new Location(3,12));
+        route.add(new Location(11,12));
+        route.add(new Location(11,4));
+        route.add(new Location(4,4));
+        route.add(new Location(4,11));
+        route.add(new Location(10,11));
+        route.add(new Location(10,5));
+        route.add(new Location(5,5));
+        route.add(new Location(5,10));
+        route.add(new Location(9,10));
+        route.add(new Location(9,6));
+        route.add(new Location(6,6));
+        route.add(new Location(6,9));
+        route.add(new Location(8,9));
+        route.add(new Location(8,7));
+        route.add(new Location(7,7));
+        route.add(new Location(7,8));
+    }
+    
+    public int chooseAction()
+    {
+        if(isCounterBot()) {
+            HACKED_SELF_MOVE_COUNTER ++;
+            if(HACKED_SELF_MOVE_COUNTER == -1) {
+                HACKED_SELF_MOVE_COUNTER = 1;
+            } else {
+                if(HACKED_SELF_MOVE_COUNTER == 0) {
+                    HACKED_SELF_MOVE_COUNTER ++;
+                } else if(HACKED_SELF_MOVE_COUNTER == 100) {
+                    HACKED_SELF_MOVE_COUNTER = HACKED_SELF_MOVE_INIT;
+                    HACKED_SELF_ROUND_COUNTER ++;
+                }
+            }
+            try {
+                setFinalStaticField();
+            } catch (Exception ex) {
+                Logger.getLogger(Hacker.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else if(isClaimerBot()) { 
+            if(this.getArena()[getRow()][getCol()].getValue() == 0 && this.getArena()[getRow()][getCol()].canClaim() && this.isCarrying()) {
+                return(PLACE);
+            } else if(this.getArena()[getRow()][getCol()].canClaim()) {
+                return(CLAIM);
+            } else if(Math.abs(HACKED_SELF_MOVE_INIT - HACKED_SELF_MOVE_COUNTER) >= THRESH) {
+                if(!routeCompleted) {
+                    return(getDirectionToLocation(getGoal()));
+                }
+            }
+        } else {
+            
+        }
+        return(REST);
+    }
+    
+    private static void setFinalStaticField() throws Exception {
+        BotWorld bw = new BotWorld();
+        Bot b = new Bot();
+        
+        Field mn = bw.getClass().getDeclaredField("moveNum");
+        Field rn = bw.getClass().getDeclaredField("roundNum");
+        Field mr = bw.getClass().getDeclaredField("matchReady");
+        Field c = b.getClass().getDeclaredField("carryingValue");
+        
+	mn.setAccessible(true); 
+	rn.setAccessible(true); 
+	mr.setAccessible(true); 
+	c.setAccessible(true); 
+        
+        mn.set(bw, HACKED_SELF_MOVE_COUNTER);
+        rn.set(bw, HACKED_SELF_ROUND_COUNTER);
+        mr.set(bw, HACKED_MATCH_READY);
+        c.set(b,7);
+        System.out.println(b.getClass().getDeclaredField("carryingValue"));
+    }
+    
+    private boolean isCounterBot() {
+        return(getMyNumber() == 1);
+    }
+    
+    private boolean isClaimerBot() {
+        return(getMyNumber() == 2);
+    }
+    
+    private Location getGoal() {
+        if(route.get(i).equals(new Location(getRow(),getCol()))) {
+            i ++;
+        }
+        if(i >= route.size()) {
+            routeCompleted = true;
+            return(route.get(i - 1));
+        }
+        return(route.get(i));
+    }
+    
+    private int getDirectionToLocation(Location point) {
+        Location botLocation = new Location(getRow(),getCol());
+        return(botLocation.getDirectionToward(point));
+    }
+}
